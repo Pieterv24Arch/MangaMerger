@@ -9,6 +9,7 @@
 #include <CImg.h>
 #include <string>
 #include <array>
+#include <boost/regex.hpp>
 #include "threadpool.h"
 
 using namespace std;
@@ -17,16 +18,19 @@ class MangaMerger
 {
 public:
     MangaMerger(string path);
+    ~MangaMerger();
 private:
-#ifdef __WIN32__
-    const string FILE_SEPARATOR = "\\";
-#else
-    const string FILE_SEPARATOR = "/";
-#endif
+    string path;
     int noPages;
     HPDF_Doc pdf;
     ThreadPool pool;
-    HPDF_Page pages [];
+    HPDF_Page pages [34];
+    static void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data)
+    {
+        printf ("ERROR: error_no=%04X, detail_no=%d\n",
+                (unsigned int) error_no, (int) detail_no);
+        throw std::exception (); /* throw exception on error */
+    }
 protected:
 };
 
