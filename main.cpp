@@ -18,5 +18,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     MangaMerger merger(argv[1]);
+    merger.MergeStart();
+
+    merger.Save("/home/pieter/Documents/testpdf.pdf");
+
     return 0;
 }

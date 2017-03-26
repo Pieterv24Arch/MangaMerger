@@ -1,7 +1,8 @@
 //
 // Created by pieter on 24-3-17.
 //
-
+#include <string>
+#include <hpdf.h>
 #include "threadpool.h"
 
 void Worker::operator()() {

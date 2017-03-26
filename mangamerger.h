@@ -6,10 +6,10 @@
 #define MANGAMERGER_MANGAMERGER_H
 
 #include <hpdf.h>
-#include <CImg.h>
 #include <string>
-#include <array>
 #include <boost/regex.hpp>
+#include <mutex>
+#include <vector>
 #include "threadpool.h"
 
 using namespace std;
@@ -18,13 +18,23 @@ class MangaMerger
 {
 public:
     MangaMerger(string path);
+    void MergeStart();
+    void Merge(string path, HPDF_Page& page, int pageNr);
+    void Save(string path);
     ~MangaMerger();
 private:
+#ifdef __WIN32__
+    const string pathRegexString = "^\\\\(?:.+\\\\)*((?:.+)\\.(?:png|jpg|jpeg))$";
+#else
+    const string pathRegexString = "^\\/(?:.+\\/)*((?:.+)\\.(?:png|jpg|jpeg))$";
+#endif
     string path;
-    int noPages;
+    int pageCount;
     HPDF_Doc pdf;
     ThreadPool pool;
-    HPDF_Page pages [34];
+    mutex pageMtx;
+    vector<string> imagePaths;
+
     static void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data)
     {
         printf ("ERROR: error_no=%04X, detail_no=%d\n",

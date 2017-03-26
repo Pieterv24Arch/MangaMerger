@@ -1,6 +1,7 @@
 #include <iostream>
 #include <boost/filesystem.hpp>
 #include <hpdf.h>
+#include <vector>
 #include "mangamerger.h"
 
 using namespace boost::filesystem;
@@ -9,11 +10,7 @@ MangaMerger::MangaMerger(string path) :
         pool(thread::hardware_concurrency() > 0 ? thread::hardware_concurrency() : 4)
 {
     this->path = path;
-#ifdef __WIN32__
-    boost::regex pathRegex("^\\\\(?:.+\\\\)*((?:.+)\\.(?:png|jpg|jpeg))$");
-#else
-    boost::regex pathRegex("^\\/(?:.+\\/)*((?:.+)\\.(?:png|jpg|jpeg))$");
-#endif
+    boost::regex pathRegex(pathRegexString);
     int count = 0;
     pdf = HPDF_New(error_handler, NULL);
 
@@ -31,12 +28,52 @@ MangaMerger::MangaMerger(string path) :
                && !is_directory(itr->path()))
             {
                 count++;
+                imagePaths.push_back(itr->path().string());
             }
         }
     }
-    cout << count << " Items counted";
-    noPages = count;
-    
+
+    cout << count << " Items counted" << endl;
+
+    pageCount = count;
+    //Sort array on name.
+    std::sort(imagePaths.begin(), imagePaths.end());
+}
+
+void MangaMerger::MergeStart()
+{
+    HPDF_Page pages [pageCount];
+    //Initalize all pages
+    for(int i = 0; i < pageCount; i++)
+    {
+        pages[i] = HPDF_AddPage(pdf);
+    }
+
+    for(int i = 0; i < pageCount; i++)
+    {
+        Merge(imagePaths[i], pages[i], i);
+    }
+}
+
+void MangaMerger::Merge(string path, HPDF_Page &page, int pageNr)
+{
+    pageMtx.lock();
+    cout << pageNr << " is processing" << endl;
+    cout << "Path is: " << path << endl;
+    pageMtx.unlock();
+
+    HPDF_Font def_font = HPDF_GetFont (pdf, "Helvetica", NULL);
+
+    HPDF_Page_BeginText(page);
+    HPDF_Page_SetFontAndSize (page, def_font, 24);
+    HPDF_Page_MoveTextPos (page, 60, HPDF_Page_GetHeight(page) - 105);
+    HPDF_Page_ShowText (page, path.c_str());
+    HPDF_Page_EndText(page);
+}
+
+void MangaMerger::Save(string path)
+{
+    HPDF_SaveToFile(pdf, path.c_str());
 }
 
 MangaMerger::~MangaMerger() {
