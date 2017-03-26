@@ -35,10 +35,10 @@ ThreadPool::~ThreadPool() {
     }
 }
 
-template<class F>
-void ThreadPool::enqueue(F f) {
+//template<class F>
+void ThreadPool::enqueue(function<void()> f) {
     unique_lock<mutex> lock(queue_mutex);
-    tasks.push_back(function<void()>(f));
+    tasks.push_back(f);
     lock.unlock();
     cond.notify_one();
 }

@@ -27,8 +27,8 @@ class ThreadPool
 {
 public:
     ThreadPool(size_t threads);
-    template<class F>
-    void enqueue(F f);
+    //template<class F>
+    void enqueue(function<void()> f);
     ~ThreadPool();
 private:
     friend class Worker;

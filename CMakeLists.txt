@@ -3,8 +3,10 @@ PROJECT(MangaMerger)
 
 SET(CMAKE_CXX_STANDARD 11)
 
+FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)
 FIND_PACKAGE(Boost COMPONENTS regex system filesystem REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${ImageMagick_INCLUDE_DIRS})
 
 FIND_LIBRARY(LHPDF_LIB
     NAMES
@@ -12,9 +14,12 @@ FIND_LIBRARY(LHPDF_LIB
     PATHS
     /usr/local/lib)
 
-SET(SOURCE_FILES main.cpp mangamerger.cpp mangamerger.h threadpool.cpp threadpool.h imagecompressor.cpp imagecompressor.h)
+SET(SOURCE_FILES main.cpp mangamerger.cpp mangamerger.h threadpool.cpp threadpool.h)
 ADD_EXECUTABLE(MangaMerger ${SOURCE_FILES})
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread ")
+ADD_DEFINITIONS( -DMAGICKCORE_QUANTUM_DEPTH=16 )
+ADD_DEFINITIONS( -DMAGICKCORE_HDRI_ENABLE=0 )
 
 TARGET_LINK_LIBRARIES( MangaMerger ${LHPDF_LIB})
 TARGET_LINK_LIBRARIES( MangaMerger ${Boost_LIBRARIES})
+TARGET_LINK_LIBRARIES( MangaMerger ${ImageMagick_LIBRARIES})

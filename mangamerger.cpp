@@ -2,6 +2,8 @@
 #include <boost/filesystem.hpp>
 #include <hpdf.h>
 #include <vector>
+#include <functional>
+#include <Magick++.h>
 #include "mangamerger.h"
 
 using namespace boost::filesystem;
@@ -51,24 +53,64 @@ void MangaMerger::MergeStart()
 
     for(int i = 0; i < pageCount; i++)
     {
-        Merge(imagePaths[i], pages[i], i);
+        //Pass function to threadpool to be processed concurrently
+        function<void()> merge = std::bind(&MangaMerger::Merge, this, imagePaths[i], pages[i], i);
+        pool.enqueue(merge);
     }
 }
 
 void MangaMerger::Merge(string path, HPDF_Page &page, int pageNr)
 {
-    pageMtx.lock();
+    /*pageMtx.lock();
     cout << pageNr << " is processing" << endl;
     cout << "Path is: " << path << endl;
-    pageMtx.unlock();
+    pageMtx.unlock();*/
 
     HPDF_Font def_font = HPDF_GetFont (pdf, "Helvetica", NULL);
 
     HPDF_Page_BeginText(page);
     HPDF_Page_SetFontAndSize (page, def_font, 24);
     HPDF_Page_MoveTextPos (page, 60, HPDF_Page_GetHeight(page) - 105);
-    HPDF_Page_ShowText (page, path.c_str());
+    HPDF_Page_ShowText (page, processImage(path).c_str());
     HPDF_Page_EndText(page);
+}
+
+string MangaMerger::processImage(string path)
+{
+    boost::regex pathRegex(pathRegexString);
+    boost::cmatch char_matches;
+    if(boost::regex_match(path.c_str(), char_matches, pathRegex))
+    {
+        string outputPath = char_matches[1] + "output" + dirSeperator + char_matches[2] + ".jpg";
+        boost::filesystem::path outputDir(char_matches[1]+"output" + dirSeperator);
+
+        Magick::Image image;
+        image.read(path);
+
+        if(!boost::filesystem::exists(outputDir))
+        {
+            boost::filesystem::create_directory(outputDir);
+        }
+        //If jpg is found
+        if(char_matches[3] == "jpg" || char_matches[3] == "jpeg")
+        {
+            image.magick("JPEG");
+            image.type(Magick::GrayscaleType);
+            image.compressType(Magick::JPEGCompression);
+            image.quality(20);
+        }
+        else if(char_matches[3] == "png")
+        {
+            image.magick("JPEG");
+            image.type(Magick::GrayscaleType);
+            image.compressType(Magick::JPEGCompression);
+            image.quality(20);
+        }
+
+        image.write(outputPath);
+        return outputPath;
+    }
+    return "";
 }
 
 void MangaMerger::Save(string path)

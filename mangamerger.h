@@ -21,12 +21,15 @@ public:
     void MergeStart();
     void Merge(string path, HPDF_Page& page, int pageNr);
     void Save(string path);
+    string processImage(string path);
     ~MangaMerger();
 private:
 #ifdef __WIN32__
-    const string pathRegexString = "^\\\\(?:.+\\\\)*((?:.+)\\.(?:png|jpg|jpeg))$";
+    const string pathRegexString = "^((?:.:)?\\\\(?:.+\\\\)*)(.+)\\.(png|jpg|jpeg)$";
+    const string dirSeperator = "\\";
 #else
-    const string pathRegexString = "^\\/(?:.+\\/)*((?:.+)\\.(?:png|jpg|jpeg))$";
+    const string pathRegexString = "^(\\/(?:.+\\/)*)(.+)\\.(png|jpg|jpeg)$";
+    const string dirSeperator = "/";
 #endif
     string path;
     int pageCount;
@@ -34,6 +37,7 @@ private:
     ThreadPool pool;
     mutex pageMtx;
     vector<string> imagePaths;
+    vector<string> processedImagePaths;
 
     static void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data)
     {
