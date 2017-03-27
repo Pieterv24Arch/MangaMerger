@@ -3,17 +3,17 @@
 #include <hpdf.h>
 #include <vector>
 #include <functional>
-#include <Magick++.h>
 #include "mangamerger.h"
 
 using namespace boost::filesystem;
 
 MangaMerger::MangaMerger(string path) :
-        pool(thread::hardware_concurrency() > 0 ? thread::hardware_concurrency() : 4)
+        pool(thread::hardware_concurrency() > 0 ? thread::hardware_concurrency() : 2)
 {
     this->path = path;
     boost::regex pathRegex(pathRegexString);
     int count = 0;
+    //Initiate new pdf file
     pdf = HPDF_New(error_handler, NULL);
 
     directory_iterator end_itr;
@@ -35,8 +35,7 @@ MangaMerger::MangaMerger(string path) :
         }
     }
 
-    cout << count << " Items counted" << endl;
-
+    //Set pagecount
     pageCount = count;
     //Sort array on name.
     std::sort(imagePaths.begin(), imagePaths.end());
@@ -45,37 +44,45 @@ MangaMerger::MangaMerger(string path) :
 void MangaMerger::MergeStart()
 {
     HPDF_Page pages [pageCount];
+    tasksRemaining = pageCount;
     //Initalize all pages
     for(int i = 0; i < pageCount; i++)
     {
         pages[i] = HPDF_AddPage(pdf);
     }
-
     for(int i = 0; i < pageCount; i++)
     {
         //Pass function to threadpool to be processed concurrently
-        function<void()> merge = std::bind(&MangaMerger::Merge, this, imagePaths[i], pages[i], i);
+        function<void()> merge = std::bind(&MangaMerger::Merge, this, imagePaths[i], pages[i]);
         pool.enqueue(merge);
+    }
+
+    while (true)
+    {
+        unique_lock<mutex> locker(monitorMtx);
+        cond.wait(locker, [this](){ return tasksRemaining <= 0;});
+        if(tasksRemaining <= 0)
+        {
+            return;
+        }
     }
 }
 
-void MangaMerger::Merge(string path, HPDF_Page &page, int pageNr)
+void MangaMerger::Merge(string path, HPDF_Page &page)
 {
-    /*pageMtx.lock();
-    cout << pageNr << " is processing" << endl;
-    cout << "Path is: " << path << endl;
-    pageMtx.unlock();*/
+    string imageLocation = processImage(path, HPDF_Page_GetHeight(page), HPDF_Page_GetWidth(page));
 
-    HPDF_Font def_font = HPDF_GetFont (pdf, "Helvetica", NULL);
+    HPDF_Image image = HPDF_LoadJpegImageFromFile(pdf, imageLocation.c_str());
+    int heightDiff = (HPDF_Page_GetHeight(page) - HPDF_Image_GetHeight(image))/2;
+    int widthDiff = (HPDF_Page_GetWidth(page) - HPDF_Image_GetWidth(image))/2;
 
-    HPDF_Page_BeginText(page);
-    HPDF_Page_SetFontAndSize (page, def_font, 24);
-    HPDF_Page_MoveTextPos (page, 60, HPDF_Page_GetHeight(page) - 105);
-    HPDF_Page_ShowText (page, processImage(path).c_str());
-    HPDF_Page_EndText(page);
+    HPDF_Page_DrawImage(page, image, widthDiff, heightDiff, HPDF_Image_GetWidth(image), HPDF_Image_GetHeight(image));
+
+    tasksRemaining--;
+    cond.notify_one();
 }
 
-string MangaMerger::processImage(string path)
+string MangaMerger::processImage(string path, int pageHeight, int pageWidth)
 {
     boost::regex pathRegex(pathRegexString);
     boost::cmatch char_matches;
@@ -86,31 +93,41 @@ string MangaMerger::processImage(string path)
 
         Magick::Image image;
         image.read(path);
+        Magick::Geometry imageSize = image.size();
 
         if(!boost::filesystem::exists(outputDir))
         {
             boost::filesystem::create_directory(outputDir);
         }
-        //If jpg is found
-        if(char_matches[3] == "jpg" || char_matches[3] == "jpeg")
-        {
-            image.magick("JPEG");
-            image.type(Magick::GrayscaleType);
-            image.compressType(Magick::JPEGCompression);
-            image.quality(20);
-        }
-        else if(char_matches[3] == "png")
-        {
-            image.magick("JPEG");
-            image.type(Magick::GrayscaleType);
-            image.compressType(Magick::JPEGCompression);
-            image.quality(20);
-        }
+        image.magick("JPEG");
+        image.type(Magick::GrayscaleType);
+        image.compressType(Magick::JPEGCompression);
+        image.quality(40);
+        if(imageSize.width() > imageSize.height())
+            image.rotate(90);
+        image.resize(calculateImageSize(pageHeight, pageWidth, imageSize.height(), imageSize.width()));
 
         image.write(outputPath);
         return outputPath;
     }
     return "";
+}
+
+Magick::Geometry MangaMerger::calculateImageSize(int pageHeight, int pageWidth, int imageHeight, int imageWidth)
+{
+    int heightDiff = abs(imageHeight-pageHeight);
+    int widthDiff = abs(imageWidth-pageWidth);
+    if(heightDiff*imageHeight < widthDiff*imageWidth)
+    {
+        int newHeight = imageHeight - heightDiff;
+        int newWidth = newHeight * imageWidth / imageHeight;
+        return Magick::Geometry(newWidth, newHeight);
+    } else
+    {
+        int newWidth = imageWidth - widthDiff;
+        int newHeight = newWidth * imageHeight / imageWidth;
+        return Magick::Geometry(newWidth, newHeight);
+    }
 }
 
 void MangaMerger::Save(string path)
@@ -119,6 +136,15 @@ void MangaMerger::Save(string path)
 }
 
 MangaMerger::~MangaMerger() {
+    cout << "Destruciont Initiated" << endl;
+    if(path != "")
+    {
+        boost::filesystem::path outputDir(path + dirSeperator + "output" + dirSeperator);
+        if (boost::filesystem::exists(outputDir))
+        {
+            boost::filesystem::remove_all(outputDir);
+        }
+    }
     HPDF_Free(pdf);
 }
 

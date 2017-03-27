@@ -8,8 +8,11 @@
 #include <hpdf.h>
 #include <string>
 #include <boost/regex.hpp>
+#include <Magick++.h>
 #include <mutex>
+#include <condition_variable>
 #include <vector>
+#include <atomic>
 #include "threadpool.h"
 
 using namespace std;
@@ -19,9 +22,10 @@ class MangaMerger
 public:
     MangaMerger(string path);
     void MergeStart();
-    void Merge(string path, HPDF_Page& page, int pageNr);
+    void Merge(string path, HPDF_Page& page);
     void Save(string path);
-    string processImage(string path);
+    string processImage(string path, int pageHeight, int pageWidth);
+    Magick::Geometry calculateImageSize(int pageHeight, int pageWidth, int imageHeight, int imageWidth);
     ~MangaMerger();
 private:
 #ifdef __WIN32__
@@ -36,8 +40,10 @@ private:
     HPDF_Doc pdf;
     ThreadPool pool;
     mutex pageMtx;
+    mutex monitorMtx;
+    condition_variable cond;
+    atomic_int tasksRemaining;
     vector<string> imagePaths;
-    vector<string> processedImagePaths;
 
     static void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data)
     {

@@ -15,19 +15,23 @@
 
 using namespace std;
 
+void usage()
+{
+    cout << "Usage: MangaMerger <Path to source> <Path to output>/<filename>.pdf" << endl;
+}
+
 int main(int argc, char* argv[])
 {
-    Magick::InitializeMagick(*argv);
-    if(argc < 1)
+    if(argc > 2 || argc > 3)
     {
-        return 1;
+        Magick::InitializeMagick(*argv);
+
+        MangaMerger merger(argv[1]);
+        merger.MergeStart();
+
+        merger.Save(argv[2]);
+    } else {
+        usage();
     }
-    MangaMerger merger(argv[1]);
-    merger.MergeStart();
-
-    cin.ignore();
-
-    merger.Save("/home/pieter/Documents/testpdf.pdf");
-
     return 0;
 }
