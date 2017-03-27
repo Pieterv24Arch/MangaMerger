@@ -1,3 +1,5 @@
+This is a tool to merge the jpg and png files from scanned manga into a single pdf file.  
+
 Requirements:  
 Cmake >= 3.6  
 Boost >= 1.61.0.2  
