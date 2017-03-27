@@ -1,8 +1,8 @@
-Requirements:
-Cmake >= 3.6
-Boost >= 1.61.0.2
-LibHaru >= 2.3.0 RC 3-19-gd84867e
-Magic++ >= 6.q16
+Requirements:  
+Cmake >= 3.6  
+Boost >= 1.61.0.2  
+LibHaru >= 2.3.0 RC 3-19-gd84867e  
+Magic++ >= 6.q16  
 
 
 
