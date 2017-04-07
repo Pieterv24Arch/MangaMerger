@@ -12,3 +12,6 @@ This software is provides as is.
 It has been tested on Ubuntu 16.10.  
 But I can't guarantee that it'll work for everyone.  
 Feel free to copy, expand, sell or do whatever you want with the code.  
+
+Bugs:
+Arguments can only be complete paths - relative paths don't work.
