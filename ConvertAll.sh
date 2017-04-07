@@ -8,7 +8,7 @@
 currentDir=$PWD;
 output=$1;
 
-mkdir -p $output;
+mkdir -p "$output";
 cd "$output";
 output=$PWD;
 cd "$currentDir";
