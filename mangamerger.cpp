@@ -136,7 +136,6 @@ void MangaMerger::Save(string path)
 }
 
 MangaMerger::~MangaMerger() {
-    cout << "Destruciont Initiated" << endl;
     if(path != "")
     {
         boost::filesystem::path outputDir(path + dirSeperator + "output" + dirSeperator);
